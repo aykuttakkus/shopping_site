@@ -63,59 +63,68 @@ const getProductById = async (req, res, next) => {
     const { id } = req.params;
     
     let product = null;
+    const products = await productService.getAllProducts();
     
-    // Sayı girilirse direkt ID araması yap
-    if (!isNaN(id) && parseInt(id) > 0) {
+    // 5 haneli sayı girilirse ID araması yap
+    if (!isNaN(id) && id.toString().length === 5) {
       product = await productService.getProductById(parseInt(id));
-    } else {
-      // Metin girilirse isim araması yap - tüm eşleşen ürünleri döndür
-      const products = await productService.getAllProducts();
-      const searchTerm = id.toLowerCase();
       
-      // Tüm eşleşen ürünleri bul
-      const matchingProducts = products.filter(p => {
-        const productName = p.name.toLowerCase();
-        
-        // Tam eşleşme
-        if (productName === searchTerm) return true;
-        
-        // Başlangıç eşleşmesi
-        if (productName.startsWith(searchTerm)) return true;
-        
-        // İçerik eşleşmesi
-        if (productName.includes(searchTerm)) return true;
-        
-        return false;
-      });
-      
-      // Eşleşen ürün varsa tümünü döndür
-      if (matchingProducts.length > 0) {
-        // Fiyat hesaplama
-        const calculatedProducts = await priceCalculationService.calculatePricesForProducts(matchingProducts);
-        
-        return res.json({
-          success: true,
-          data: calculatedProducts,
-          total: calculatedProducts.length
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'PRODUCT_NOT_FOUND',
+            message: 'Ürün bulunamadı'
+          }
         });
       }
-    }
-    
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'PRODUCT_NOT_FOUND',
-          message: 'Ürün bulunamadı'
-        }
+      
+      const calculatedProduct = await priceCalculationService.calculatePrice(product);
+      
+      return res.json({
+        success: true,
+        data: calculatedProduct
       });
     }
     
-    const calculatedProduct = await priceCalculationService.calculatePrice(product);
+    // Diğer durumlar: isim araması yap (sayı veya metin olabilir)
+    const searchTerm = id.toLowerCase();
     
-    res.json({
-      success: true,
-      data: calculatedProduct
+    // Tüm eşleşen ürünleri bul
+    const matchingProducts = products.filter(p => {
+      const productName = p.name.toLowerCase();
+      
+      // Tam eşleşme
+      if (productName === searchTerm) return true;
+      
+      // Başlangıç eşleşmesi
+      if (productName.startsWith(searchTerm)) return true;
+      
+      // İçerik eşleşmesi
+      if (productName.includes(searchTerm)) return true;
+      
+      return false;
+    });
+    
+    // Eşleşen ürün varsa tümünü döndür
+    if (matchingProducts.length > 0) {
+      // Fiyat hesaplama
+      const calculatedProducts = await priceCalculationService.calculatePricesForProducts(matchingProducts);
+      
+      return res.json({
+        success: true,
+        data: calculatedProducts,
+        total: calculatedProducts.length
+      });
+    }
+    
+    // Hiç eşleşme yoksa
+    return res.status(404).json({
+      success: false,
+      error: {
+        code: 'PRODUCT_NOT_FOUND',
+        message: 'Ürün bulunamadı'
+      }
     });
   } catch (error) {
     next(error);

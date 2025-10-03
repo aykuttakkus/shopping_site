@@ -21,10 +21,10 @@ class ProductService {
       const data = await fs.readFile(this.productsPath, 'utf8');
       this.products = JSON.parse(data);
       
-      // ID'leri ekle
+      // Eğer ID yoksa index'e göre ID ekle
       this.products = this.products.map((product, index) => ({
-        ...product,
-        id: index + 1
+        id: index + 1,
+        ...product
       }));
       
       this.lastLoadTime = Date.now();
