@@ -193,13 +193,13 @@ const getSortedProducts = async (req, res, next) => {
       // Kullanıcı dostu sıralama türleri
       switch (sortType) {
         case 'price_high_to_low':
-          sortCriteria = [{ field: 'price', order: 'desc' }];
+          sortCriteria = [{ field: 'calculatedPrice', order: 'desc' }];
           break;
         case 'price_low_to_high':
-          sortCriteria = [{ field: 'price', order: 'asc' }];
+          sortCriteria = [{ field: 'calculatedPrice', order: 'asc' }];
           break;
         case 'most_popular':
-          sortCriteria = [{ field: 'popularity', order: 'desc' }];
+          sortCriteria = [{ field: 'popularityRating', order: 'desc' }];
           break;
         default:
           return res.status(400).json({
