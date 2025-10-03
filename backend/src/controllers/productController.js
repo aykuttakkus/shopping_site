@@ -39,12 +39,12 @@ const getProducts = async (req, res, next) => {
     
     res.json({
       success: true,
-      data: paginatedProducts,
-      pagination: {
-        currentPage: parseInt(page),
+      data: {
+        products: paginatedProducts,
+        total: total,
+        page: parseInt(page),
+        limit: parseInt(limit),
         totalPages: Math.ceil(total / limit),
-        totalItems: total,
-        itemsPerPage: parseInt(limit),
         hasNextPage: endIndex < total,
         hasPrevPage: startIndex > 0
       },

@@ -69,9 +69,30 @@ const {
  *                 - type: object
  *                   properties:
  *                     data:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Product'
+ *                       type: object
+ *                       properties:
+ *                         products:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/Product'
+ *                         total:
+ *                           type: integer
+ *                           description: Toplam ürün sayısı
+ *                         page:
+ *                           type: integer
+ *                           description: Mevcut sayfa
+ *                         limit:
+ *                           type: integer
+ *                           description: Sayfa başına ürün sayısı
+ *                         totalPages:
+ *                           type: integer
+ *                           description: Toplam sayfa sayısı
+ *                         hasNextPage:
+ *                           type: boolean
+ *                           description: Sonraki sayfa var mı
+ *                         hasPrevPage:
+ *                           type: boolean
+ *                           description: Önceki sayfa var mı
  *       400:
  *         description: Geçersiz parametreler
  *         content:

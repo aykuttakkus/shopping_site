@@ -11,11 +11,57 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
   const [sortType, setSortType] = useState<'price_high_to_low' | 'price_low_to_high' | 'most_popular'>('most_popular');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[] | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    minPrice: '',
+    maxPrice: '',
+    minPopularity: '',
+    maxPopularity: '',
+    minWeight: '',
+    maxWeight: ''
+  });
+  const [appliedFilters, setAppliedFilters] = useState({
+    minPrice: '',
+    maxPrice: '',
+    minPopularity: '',
+    maxPopularity: '',
+    minWeight: '',
+    maxWeight: ''
+  });
 
-  // Fetch products with sorting
+  // Filtre parametrelerini hazırla (appliedFilters kullan)
+  const getFilterParams = () => {
+    const params: any = {};
+    if (appliedFilters.minPrice) params.minPrice = parseFloat(appliedFilters.minPrice);
+    if (appliedFilters.maxPrice) params.maxPrice = parseFloat(appliedFilters.maxPrice);
+    if (appliedFilters.minPopularity) params.minPopularity = parseFloat(appliedFilters.minPopularity);
+    if (appliedFilters.maxPopularity) params.maxPopularity = parseFloat(appliedFilters.maxPopularity);
+    if (appliedFilters.minWeight) params.minWeight = parseFloat(appliedFilters.minWeight);
+    if (appliedFilters.maxWeight) params.maxWeight = parseFloat(appliedFilters.maxWeight);
+    return params;
+  };
+
+  // Filtre aktif mi?
+  const hasActiveFilters = Object.values(appliedFilters).some(value => value !== '');
+  
+  // Filtre uygula butonu handler
+  const handleApplyFilters = () => {
+    setAppliedFilters({ ...filters });
+  };
+
+  // Fetch products with optional filtering
   const { data: products = [], isLoading, error } = useQuery({
-    queryKey: ['products', 'sorted', sortType],
-    queryFn: () => productApi.getSortedProducts(sortType),
+    queryKey: ['products', appliedFilters, sortType],
+    queryFn: async () => {
+      if (hasActiveFilters) {
+        // Filtreleme varsa /api/products endpoint'ini kullan
+        const response = await productApi.getProducts(getFilterParams());
+        return response.products;
+      } else {
+        // Filtreleme yoksa sıralama endpoint'ini kullan
+        return await productApi.getSortedProducts(sortType);
+      }
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !searchResults, // Arama sonuçları varsa bu query'yi çalıştırma
   });
@@ -43,8 +89,32 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
     setSearchResults(null);
   };
 
+  // Filtre değeri değişikliği için handler
+  const handleFilterChange = (field: keyof typeof filters, value: string) => {
+    // Boş değer veya geçerli sayı formatı kontrolü
+    if (value === '' || !isNaN(Number(value))) {
+      setFilters({ ...filters, [field]: value });
+    }
+  };
+
+  // Gösterilecek ürünleri sırala
+  const getSortedProducts = (productsToSort: Product[]): Product[] => {
+    const sorted = [...productsToSort];
+    
+    switch (sortType) {
+      case 'price_high_to_low':
+        return sorted.sort((a, b) => b.calculatedPrice - a.calculatedPrice);
+      case 'price_low_to_high':
+        return sorted.sort((a, b) => a.calculatedPrice - b.calculatedPrice);
+      case 'most_popular':
+        return sorted.sort((a, b) => b.popularityRating - a.popularityRating);
+      default:
+        return sorted;
+    }
+  };
+
   // Gösterilecek ürünler
-  const displayProducts = searchResults || products;
+  const displayProducts = getSortedProducts(searchResults || products);
 
   if (isLoading && !searchResults) {
     return (
@@ -77,37 +147,44 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
         </div>
       </div>
 
-      {/* Search and Sort Options */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        {/* Search */}
-        <form onSubmit={handleSearch} className="flex items-center space-x-2">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by ID or Name..."
-            className="font-avenir text-sm border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400 w-64"
-          />
-          <button
-            type="submit"
-            className="font-avenir text-sm bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400"
-          >
-            Search
-          </button>
-          {searchResults && (
+      {/* Search, Filter and Sort Options */}
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          {/* Search */}
+          <form onSubmit={handleSearch} className="flex items-center space-x-2">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by ID or Name..."
+              className="font-avenir text-sm border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400 w-64"
+            />
             <button
-              type="button"
-              onClick={clearSearch}
-              className="font-avenir text-sm bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              type="submit"
+              className="font-avenir text-sm bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400"
             >
-              Clear
+              Search
             </button>
-          )}
-        </form>
+            {searchResults && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="font-avenir text-sm bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              >
+                Clear
+              </button>
+            )}
+          </form>
 
-        {/* Sort Options */}
-        {!searchResults && (
+          {/* Filter and Sort */}
           <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="font-avenir text-sm bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            >
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </button>
+            
             <span className="font-avenir text-sm text-gray-600">Sort by:</span>
             <select
               value={sortType}
@@ -118,6 +195,129 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
               <option value="price_high_to_low">Price: High to Low</option>
               <option value="price_low_to_high">Price: Low to High</option>
             </select>
+          </div>
+        </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="bg-gray-50 border border-gray-300 rounded-md p-4">
+            <h3 className="font-avenir font-medium text-sm text-gray-900 mb-4">Filters</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Price Filters */}
+              <div>
+                <label className="font-avenir text-xs text-gray-600 block mb-2">Price Range</label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={filters.minPrice}
+                    onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                    min="0"
+                    step="any"
+                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  />
+                  <span className="text-gray-500">-</span>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={filters.maxPrice}
+                    onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                    min="0"
+                    step="any"
+                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  />
+                </div>
+              </div>
+
+              {/* Popularity Filters */}
+              <div>
+                <label className="font-avenir text-xs text-gray-600 block mb-2">Popularity (0-5)</label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={filters.minPopularity}
+                    onChange={(e) => handleFilterChange('minPopularity', e.target.value)}
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  />
+                  <span className="text-gray-500">-</span>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={filters.maxPopularity}
+                    onChange={(e) => handleFilterChange('maxPopularity', e.target.value)}
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  />
+                </div>
+              </div>
+
+              {/* Weight Filters */}
+              <div>
+                <label className="font-avenir text-xs text-gray-600 block mb-2">Weight (grams)</label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={filters.minWeight}
+                    onChange={(e) => handleFilterChange('minWeight', e.target.value)}
+                    min="0"
+                    step="0.1"
+                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  />
+                  <span className="text-gray-500">-</span>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={filters.maxWeight}
+                    onChange={(e) => handleFilterChange('maxWeight', e.target.value)}
+                    min="0"
+                    step="0.1"
+                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Action Buttons */}
+            <div className="mt-4 flex items-center space-x-3">
+              <button
+                onClick={handleApplyFilters}
+                className="font-avenir text-sm bg-gray-700 text-white px-6 py-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              >
+                Apply Filters
+              </button>
+              {hasActiveFilters && (
+                <button
+                  onClick={() => {
+                    setFilters({
+                      minPrice: '',
+                      maxPrice: '',
+                      minPopularity: '',
+                      maxPopularity: '',
+                      minWeight: '',
+                      maxWeight: ''
+                    });
+                    setAppliedFilters({
+                      minPrice: '',
+                      maxPrice: '',
+                      minPopularity: '',
+                      maxPopularity: '',
+                      minWeight: '',
+                      maxWeight: ''
+                    });
+                  }}
+                  className="font-avenir text-sm bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                >
+                  Clear All Filters
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
