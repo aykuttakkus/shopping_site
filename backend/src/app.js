@@ -36,13 +36,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
 // Routes
 app.use('/api', productRoutes);
 
-// Serve static files from React build
-app.use(express.static(path.join(__dirname, '../../frontend/build')));
-
-// Catch all handler: send back React's index.html file for any non-API routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../frontend/build', 'index.html'));
-});
+// Frontend is served separately on Vercel
+// No need to serve static files from backend
 
 // Health check endpoint
 app.get('/health', (req, res) => {
