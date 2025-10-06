@@ -13,6 +13,9 @@ const swaggerSpecs = require('./config/swagger');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for rate limiting on Render
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet());
 app.use(cors({
