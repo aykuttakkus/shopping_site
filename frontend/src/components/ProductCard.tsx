@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Product, GoldColor } from '../services/api';
 import StarRating from './StarRating';
 import ColorPicker from './ColorPicker';
@@ -28,6 +28,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = '' }) =>
     return product.images[selectedColor];
   };
 
+  const isProductNew = (): boolean => {
+    // Backend'den gelen isNew değerini kullan
+    // Eğer yoksa dateAdded'a göre hesapla
+    if (product.isNew !== undefined) {
+      return product.isNew;
+    }
+    
+    if (!product.dateAdded) return false;
+    
+    const productDate = new Date(product.dateAdded);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    return productDate >= sixMonthsAgo;
+  };
+
   return (
     <div 
       className={`
@@ -42,6 +58,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = '' }) =>
     >
       {/* Subtle shine effect on hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/0 to-white/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
+      
+      {/* New Badge */}
+      {isProductNew() && (
+        <div className="absolute top-3 right-3 z-20 bg-yellow-gold text-gray-900 px-3 py-1 rounded-full font-montserrat font-semibold text-xs shadow-lg">
+          NEW
+        </div>
+      )}
       
       {/* Product Image Container */}
       <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
@@ -67,10 +90,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = '' }) =>
         {/* Price with luxury styling */}
         <div className="mb-4">
           <div className="flex items-baseline gap-2">
-            <span className="font-montserrat font-bold text-gray-900 text-xl tracking-tight">
+            <span className="font-montserrat font-bold text-gray-500 text-xl tracking-tight">
               ${product.calculatedPrice.toFixed(2)}
             </span>
-            <span className="font-avenir text-gray-500 text-sm">
+            <span className="font-avenir text-gray-400 text-sm">
               USD
             </span>
           </div>
@@ -124,4 +147,4 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = '' }) =>
   );
 };
 
-export default ProductCard;
+export default memo(ProductCard);

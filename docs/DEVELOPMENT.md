@@ -61,7 +61,7 @@ Express.js uygulaması oluşturulur. Middleware'ler sırasıyla eklenir. Route'l
 Ürün controller'ı, ürün listesi ve detay endpoint'lerini yönetir. Filtreleme parametrelerini işler. Fiyat hesaplama servisini çağırır. Response formatını standardize eder.
 
 #### Altın Fiyatı Servisi
-Altın fiyatı servisi, harici API'den güncel fiyatı alır. Cache mekanizması kullanır. Hata durumunda fallback fiyat döner. API key ve URL konfigürasyonu yapılır.
+Altın fiyatı servisi, harici API'den güncel fiyatı alır. Cache mekanizması kullanır. API key ve URL konfigürasyonu yapılır.
 
 ### 2. Frontend Geliştirme
 

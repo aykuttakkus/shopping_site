@@ -101,8 +101,8 @@ Fiyat = (popülerlikSkoru + 1) × ağırlık × altınFiyatı
 
 ### Örnek Hesaplama
 - **Engagement Ring 1**: popularityScore: 0.85, weight: 2.1g
-- Altın fiyatı: $65.50/gram
-- Hesaplama: (0.85 + 1) × 2.1 × 65.50 = **$254.18**
+- Altın fiyatı: $126.08/gram
+- Hesaplama: (0.85 + 1) × 2.1 × 126.08 = **$489.82**
 
 ## 🎨 Frontend Özellikleri
 

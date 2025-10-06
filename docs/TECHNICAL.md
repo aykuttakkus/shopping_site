@@ -63,7 +63,7 @@ Backend uygulaması Express.js framework'ü kullanır. Güvenlik için Helmet.js
 Fiyat hesaplama işlemi ayrı bir servis sınıfında yapılır. Bu servis, altın fiyatı servisinden güncel fiyatı alır ve her ürün için fiyat hesaplar. Popülerlik skorunu da 5 puanlık sisteme dönüştürür.
 
 ### Altın Fiyatı Servisi
-Altın fiyatı servisi, harici API'den güncel altın fiyatını alır. Performans için 5 dakikalık cache kullanır. API hatası durumunda fallback fiyat döner.
+Altın fiyatı servisi, harici API'den güncel altın fiyatını alır. Performans için 5 dakikalık cache kullanır.
 
 ### Filtreleme Servisi
 Ürün filtreleme işlemi ayrı bir servis sınıfında yapılır. Fiyat aralığı ve popülerlik skoru filtrelerini destekler. Filtreleme işlemi memory'de yapılır.
@@ -186,7 +186,7 @@ Mobil cihazlar için touch event'leri desteklenir. Swipe hareketleri ile karusel
 ### Backend Testleri
 - **Unit Tests**: Servis sınıfları test edilir
 - **Integration Tests**: API endpoint'leri test edilir
-- **Mock Tests**: Harici API'ler mock'lanır
+- **Integration Tests**: Harici API'ler test edilir
 
 ### Frontend Testleri
 - **Component Tests**: React component'leri test edilir

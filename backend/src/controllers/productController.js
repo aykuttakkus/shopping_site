@@ -210,12 +210,16 @@ const getSortedProducts = async (req, res, next) => {
         case 'most_popular':
           sortCriteria = [{ field: 'popularityRating', order: 'desc' }];
           break;
+        case 'new':
+          // Tüm ürünleri tarihe göre sırala (yeniden eskiye)
+          sortCriteria = [{ field: 'dateAdded', order: 'desc' }];
+          break;
         default:
           return res.status(400).json({
             success: false,
             error: {
               code: 'INVALID_SORT_TYPE',
-              message: 'Geçersiz sıralama türü. Desteklenen türler: price_high_to_low, price_low_to_high, most_popular'
+              message: 'Geçersiz sıralama türü. Desteklenen türler: price_high_to_low, price_low_to_high, most_popular, new'
             }
           });
       }

@@ -17,6 +17,8 @@ export interface Product {
   weight: number;
   price: number;
   calculatedPrice: number;
+  dateAdded?: string;
+  isNew?: boolean;
   images: {
     yellow: string;
     rose: string;
@@ -68,7 +70,7 @@ export const productApi = {
   },
 
   // Get sorted products
-  getSortedProducts: async (sortType: 'price_high_to_low' | 'price_low_to_high' | 'most_popular'): Promise<Product[]> => {
+  getSortedProducts: async (sortType: 'price_high_to_low' | 'price_low_to_high' | 'most_popular' | 'new'): Promise<Product[]> => {
     const response = await api.get<ApiResponse<Product[]>>('/products/sort', {
       params: { sortType }
     });

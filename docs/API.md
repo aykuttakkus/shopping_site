@@ -119,7 +119,7 @@ GET /gold-price
 {
   "success": true,
   "data": {
-    "price": 65.50,
+    "price": 126.08,
     "currency": "USD",
     "unit": "per gram",
     "lastUpdated": "2024-01-15T10:30:00Z"
@@ -158,8 +158,8 @@ Fiyat = (popülerlikSkoru + 1) × ağırlık × altınFiyatı
 Engagement Ring 1 için hesaplama:
 - Popülerlik skoru: 0.85 (85%)
 - Ağırlık: 2.1 gram
-- Altın fiyatı: $65.50/gram
-- Hesaplama: (0.85 + 1) × 2.1 × 65.50 = $254.18
+- Altın fiyatı: $126.08/gram
+- Hesaplama: (0.85 + 1) × 2.1 × 126.08 = $489.82
 
 ## Popülerlik Skoru Dönüştürme
 

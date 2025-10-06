@@ -19,6 +19,7 @@ class PriceCalculationService {
         ...product,
         calculatedPrice: roundedPrice,
         popularityRating: this.convertToFivePointScale(product.popularityScore),
+        isNew: this.isProductNew(product.dateAdded),
         goldPrice: goldPrice
       };
     } catch (error) {
@@ -33,6 +34,17 @@ class PriceCalculationService {
     return parseFloat(rating.toFixed(1));
   }
 
+  isProductNew(dateAdded) {
+    // Son 6 ay içinde eklenmiş mi kontrol et
+    if (!dateAdded) return false;
+    
+    const productDate = new Date(dateAdded);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    return productDate >= sixMonthsAgo;
+  }
+
   async calculatePricesForProducts(products) {
     try {
       const goldPrice = await this.goldPriceService.getCurrentPrice();
@@ -45,6 +57,7 @@ class PriceCalculationService {
           ...product,
           calculatedPrice: roundedPrice,
           popularityRating: this.convertToFivePointScale(product.popularityScore),
+          isNew: this.isProductNew(product.dateAdded),
           goldPrice: goldPrice
         };
       });

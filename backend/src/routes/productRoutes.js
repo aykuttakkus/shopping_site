@@ -118,8 +118,8 @@ const {
  *         name: sortType
  *         schema:
  *           type: string
- *           enum: [price_high_to_low, price_low_to_high, most_popular]
- *         description: Kullanıcı dostu sıralama türü
+ *           enum: [price_high_to_low, price_low_to_high, most_popular, new]
+ *         description: Kullanıcı dostu sıralama türü (new: tarihe göre sıralar, yeniden eskiye)
  *         example: price_high_to_low
  *     responses:
  *       200:
@@ -219,6 +219,7 @@ router.get('/products/:id', getProductById);
  *                         price:
  *                           type: number
  *                           description: Altın fiyatı (USD/gram)
+ *                           example: 126.08
  *                         currency:
  *                           type: string
  *                           example: USD
@@ -228,19 +229,41 @@ router.get('/products/:id', getProductById);
  *                         lastUpdated:
  *                           type: string
  *                           format: date-time
+ *                           example: "2025-10-06T03:16:28.608Z"
  *                         cache:
  *                           type: object
  *                           properties:
  *                             cached:
  *                               type: boolean
+ *                               example: true
  *                             price:
  *                               type: number
+ *                               example: 126.08
  *                             timestamp:
  *                               type: number
+ *                               example: 1759720588608
  *                             age:
  *                               type: number
+ *                               example: 0
  *                             expiresIn:
  *                               type: number
+ *                               example: 300000
+ *             examples:
+ *               success:
+ *                 summary: Başarılı altın fiyatı response
+ *                 value:
+ *                   success: true
+ *                   data:
+ *                     price: 126.08
+ *                     currency: "USD"
+ *                     unit: "per gram"
+ *                     lastUpdated: "2025-10-06T03:16:28.608Z"
+ *                     cache:
+ *                       cached: true
+ *                       price: 126.08
+ *                       timestamp: 1759720588608
+ *                       age: 0
+ *                       expiresIn: 300000
  */
 router.get('/gold-price', getGoldPrice);
 

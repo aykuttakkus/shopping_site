@@ -2,8 +2,8 @@ const axios = require('axios');
 
 class GoldPriceService {
   constructor() {
-    this.apiKey = process.env.GOLD_PRICE_API_KEY;
-    this.apiUrl = process.env.GOLD_PRICE_API_URL || 'https://api.metals.live/v1/spot/gold';
+    this.apiKey = process.env.GOLD_PRICE_API_KEY || 'cfd0ef189253d11c9c6c5e6c56d13d33';
+    this.apiUrl = process.env.GOLD_PRICE_API_URL || 'http://api.exchangerate.host/live';
     this.cache = new Map();
     this.cacheTimeout = parseInt(process.env.CACHE_TIMEOUT) || 5 * 60 * 1000; // 5 dakika
   }
@@ -20,47 +20,39 @@ class GoldPriceService {
     try {
       console.log('🔄 Fetching gold price from API...');
       
-      // Mock response for development (gerçek API key yoksa)
-      if (!this.apiKey || this.apiKey === 'your_api_key_here') {
-        console.log('⚠️ Using mock gold price for development');
-        const mockPrice = 65.50;
-        this.cache.set(cacheKey, {
-          price: mockPrice,
-          timestamp: Date.now()
-        });
-        return mockPrice;
-      }
-
-      const response = await axios.get(this.apiUrl, {
-        headers: { 
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        },
+      // Exchangerate.host API kullanarak altın fiyatını çek
+      const response = await axios.get(`${this.apiUrl}?access_key=${this.apiKey}`, {
         timeout: 10000
       });
       
-      const price = response.data.price || response.data.spot || 65.50;
+      // XAU (altın) fiyatını al - USDXAU formatında
+      const goldPricePerOunce = response.data.quotes?.USDXAU;
+      
+      if (!goldPricePerOunce) {
+        throw new Error('Gold price not found in API response');
+      }
+      
+      // USDXAU değeri 1 USD'nin kaç ons altın alabileceğini gösterir
+      // 1 ons altın fiyatı = 1 / USDXAU
+      const actualGoldPricePerOunce = 1 / goldPricePerOunce;
+      
+      // 1 ons = 31.1035 gram, gram başına fiyatı hesapla
+      const pricePerGram = actualGoldPricePerOunce / 31.1035;
+      
+      // 2 ondalık basamağa yuvarla
+      const roundedPrice = Math.round(pricePerGram * 100) / 100;
       
       this.cache.set(cacheKey, {
-        price,
+        price: roundedPrice,
         timestamp: Date.now()
       });
       
-      console.log(`✅ Gold price updated: $${price}/gram`);
-      return price;
+      console.log(`1 Ons Altın Fiyatı (USD): ${actualGoldPricePerOunce.toFixed(2)}`);
+      console.log(`✅ Gold price updated: $${roundedPrice}/gram`);
+      return roundedPrice;
     } catch (error) {
       console.error('❌ Gold price API error:', error.message);
-      
-      // Fallback price
-      const fallbackPrice = 65.50;
-      console.log(`🔄 Using fallback price: $${fallbackPrice}/gram`);
-      
-      this.cache.set(cacheKey, {
-        price: fallbackPrice,
-        timestamp: Date.now()
-      });
-      
-      return fallbackPrice;
+      throw new Error('Altın fiyatı alınamadı');
     }
   }
 

@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { productApi, Product } from '../services/api';
 import ProductCard from './ProductCard';
+// Framer Motion removed for better performance - using CSS animations instead
 
 interface ProductListProps {
   className?: string;
 }
 
 const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
-  const [sortType, setSortType] = useState<'price_high_to_low' | 'price_low_to_high' | 'most_popular'>('most_popular');
+  const [sortType, setSortType] = useState<'price_high_to_low' | 'price_low_to_high' | 'most_popular' | 'new'>('most_popular');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[] | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -28,6 +30,25 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
     minWeight: '',
     maxWeight: ''
   });
+  
+  const sortDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Dropdown dışına tıklandığında kapat
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
+        setShowSortDropdown(false);
+      }
+    };
+
+    if (showSortDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSortDropdown]);
 
   // Filtre parametrelerini hazırla (appliedFilters kullan)
   const getFilterParams = () => {
@@ -44,10 +65,10 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
   // Filtre aktif mi?
   const hasActiveFilters = Object.values(appliedFilters).some(value => value !== '');
   
-  // Filtre uygula butonu handler
-  const handleApplyFilters = () => {
-    setAppliedFilters({ ...filters });
-  };
+      // Filtre uygula butonu handler - memoized
+      const handleApplyFilters = useCallback(() => {
+        setAppliedFilters({ ...filters });
+      }, [filters]);
 
   // Fetch products with optional filtering
   const { data: products = [], isLoading, error } = useQuery({
@@ -66,22 +87,22 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
     enabled: !searchResults, // Arama sonuçları varsa bu query'yi çalıştırma
   });
 
-  // Arama fonksiyonu
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) {
-      setSearchResults(null);
-      return;
-    }
+      // Arama fonksiyonu - memoized
+      const handleSearch = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!searchQuery.trim()) {
+          setSearchResults(null);
+          return;
+        }
 
-    try {
-      const result = await productApi.getProductById(searchQuery);
-      // Sonuç array ise (isim araması) veya tek ürünse array'e çevir
-      setSearchResults(Array.isArray(result) ? result : [result]);
-    } catch (error) {
-      setSearchResults([]);
-    }
-  };
+        try {
+          const result = await productApi.getProductById(searchQuery);
+          // Sonuç array ise (isim araması) veya tek ürünse array'e çevir
+          setSearchResults(Array.isArray(result) ? result : [result]);
+        } catch (error) {
+          setSearchResults([]);
+        }
+      }, [searchQuery]);
 
   // Arama sonuçlarını temizle
   const clearSearch = () => {
@@ -89,16 +110,16 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
     setSearchResults(null);
   };
 
-  // Filtre değeri değişikliği için handler
-  const handleFilterChange = (field: keyof typeof filters, value: string) => {
-    // Boş değer veya geçerli sayı formatı kontrolü
-    if (value === '' || !isNaN(Number(value))) {
-      setFilters({ ...filters, [field]: value });
-    }
-  };
+      // Filtre değeri değişikliği için handler - memoized
+      const handleFilterChange = useCallback((field: keyof typeof filters, value: string) => {
+        // Boş değer veya geçerli sayı formatı kontrolü
+        if (value === '' || !isNaN(Number(value))) {
+          setFilters(prev => ({ ...prev, [field]: value }));
+        }
+      }, []);
 
-  // Gösterilecek ürünleri sırala
-  const getSortedProducts = (productsToSort: Product[]): Product[] => {
+  // Gösterilecek ürünleri sırala - memoized
+  const getSortedProducts = useCallback((productsToSort: Product[]): Product[] => {
     const sorted = [...productsToSort];
     
     switch (sortType) {
@@ -108,13 +129,22 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
         return sorted.sort((a, b) => a.calculatedPrice - b.calculatedPrice);
       case 'most_popular':
         return sorted.sort((a, b) => b.popularityRating - a.popularityRating);
+      case 'new':
+        // Tüm ürünleri tarihe göre sırala (yeniden eskiye)
+        return sorted.sort((a, b) => {
+          const dateA = a.dateAdded ? new Date(a.dateAdded).getTime() : 0;
+          const dateB = b.dateAdded ? new Date(b.dateAdded).getTime() : 0;
+          return dateB - dateA;
+        });
       default:
         return sorted;
     }
-  };
+  }, [sortType]);
 
-  // Gösterilecek ürünler
-  const displayProducts = getSortedProducts(searchResults || products);
+  // Gösterilecek ürünler - memoized
+  const displayProducts = useMemo(() => {
+    return getSortedProducts(searchResults || products);
+  }, [getSortedProducts, searchResults, products]);
 
   if (isLoading && !searchResults) {
     return (
@@ -157,138 +187,239 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by ID or Name..."
-              className="font-avenir text-sm border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400 w-64"
+              className="font-avenir text-sm border border-gray-300 rounded-md px-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-400 w-64"
             />
-            <button
-              type="submit"
-              className="font-avenir text-sm bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400"
-            >
-              Search
-            </button>
-            {searchResults && (
               <button
-                type="button"
-                onClick={clearSearch}
-                className="font-avenir text-sm bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                type="submit"
+                className="font-avenir text-sm bg-gray-700 text-white px-2 py-1.5 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 min-w-[95px] justify-center"
               >
-                Clear
+                Search
               </button>
-            )}
+                {searchResults && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    className="font-avenir text-sm bg-gray-300 text-gray-700 px-2 py-1.5 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 min-w-[95px] justify-center"
+                  >
+                    Clear
+                  </button>
+                )}
           </form>
 
-          {/* Filter and Sort */}
+          {/* Sort and Filter */}
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="font-avenir text-sm bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400"
-            >
-              {showFilters ? 'Hide Filters' : 'Show Filters'}
-            </button>
+            {/* Sort Button with Dropdown */}
+            <div className="relative" ref={sortDropdownRef}>
+                <button
+                  onClick={() => setShowSortDropdown(!showSortDropdown)}
+                  className="font-avenir text-sm bg-gray-700 text-white px-2 py-1.5 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 flex items-center gap-1.5 min-w-[95px] justify-center"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                  </svg>
+                  Sort By
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              
+              {/* Dropdown Menu */}
+              {showSortDropdown && (
+                <div className="absolute top-full mt-2 left-0 bg-white border border-gray-300 rounded-md shadow-lg z-10 min-w-[180px]">
+                  <button
+                    onClick={() => {
+                      setSortType('price_low_to_high');
+                      setShowSortDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 hover:bg-gray-100 font-avenir text-sm text-gray-700 transition-colors duration-150"
+                  >
+                    Lowest Price
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSortType('price_high_to_low');
+                      setShowSortDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 hover:bg-gray-100 font-avenir text-sm text-gray-700 transition-colors duration-150"
+                  >
+                    Highest Price
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSortType('most_popular');
+                      setShowSortDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 hover:bg-gray-100 font-avenir text-sm text-gray-700 transition-colors duration-150"
+                  >
+                    Most Popular
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSortType('new');
+                      setShowSortDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 hover:bg-gray-100 font-avenir text-sm text-gray-700 transition-colors duration-150 rounded-b-md"
+                  >
+                    New
+                  </button>
+                </div>
+              )}
+            </div>
             
-            <span className="font-avenir text-sm text-gray-600">Sort by:</span>
-            <select
-              value={sortType}
-              onChange={(e) => setSortType(e.target.value as typeof sortType)}
-              className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-gray-400"
-            >
-              <option value="most_popular">Most Popular</option>
-              <option value="price_high_to_low">Price: High to Low</option>
-              <option value="price_low_to_high">Price: Low to High</option>
-            </select>
+                {/* Filter Button */}
+                  <button
+                    onClick={() => setShowFilters(true)}
+                    style={{ 
+                      willChange: 'background-color',
+                      backfaceVisibility: 'hidden',
+                      transform: 'translateZ(0)'
+                    }}
+                    className="font-avenir text-sm bg-gray-700 text-white px-2 py-1.5 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 flex items-center gap-1.5 min-w-[95px] justify-center transition-colors duration-100"
+                  >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Filters
+                {hasActiveFilters && (
+                  <span className="bg-yellow-gold text-gray-900 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                    {displayProducts.length}
+                  </span>
+                )}
+              </button>
           </div>
         </div>
+      </div>
 
-        {/* Filter Panel */}
-        {showFilters && (
-          <div className="bg-gray-50 border border-gray-300 rounded-md p-4">
-            <h3 className="font-avenir font-medium text-sm text-gray-900 mb-4">Filters</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Sliding Filter Panel from Right */}
+      {showFilters && (
+        <>
+          {/* Backdrop/Overlay with CSS animation */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 animate-fade-in filter-backdrop"
+            onClick={() => setShowFilters(false)}
+          />
+          
+          {/* Slide-in Panel from right with CSS animation */}
+          <div 
+            className="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col animate-slide-in-right filter-panel"
+          >
+            {/* Panel Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <h2 className="font-montserrat font-semibold text-xl text-gray-900">Filters</h2>
+              </div>
+              <button
+                onClick={() => setShowFilters(false)}
+                style={{ 
+                  willChange: 'background-color',
+                  backfaceVisibility: 'hidden'
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-150"
+              >
+                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Panel Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Price Filters */}
               <div>
-                <label className="font-avenir text-xs text-gray-600 block mb-2">Price Range</label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="number"
-                    placeholder="Min"
-                    value={filters.minPrice}
-                    onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-                    min="0"
-                    step="any"
-                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  />
-                  <span className="text-gray-500">-</span>
-                  <input
-                    type="number"
-                    placeholder="Max"
-                    value={filters.maxPrice}
-                    onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-                    min="0"
-                    step="any"
-                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  />
+                <label className="font-montserrat font-medium text-sm text-gray-900 mb-3 block">Price Range</label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                        <input
+                          type="text"
+                          placeholder="Min Price ($413)"
+                          value={filters.minPrice}
+                          onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                          className="font-avenir text-sm border border-gray-300 rounded-lg px-4 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-gray-700 focus:border-transparent"
+                        />
+                  </div>
+                  <span className="text-gray-400 font-medium">—</span>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Max Price ($1,115)"
+                      value={filters.maxPrice}
+                      onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                      className="font-avenir text-sm border border-gray-300 rounded-lg px-4 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-gray-700 focus:border-transparent"
+                    />
+                  </div>
                 </div>
               </div>
+
+              {/* Divider */}
+              <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
 
               {/* Popularity Filters */}
               <div>
-                <label className="font-avenir text-xs text-gray-600 block mb-2">Popularity (0-5)</label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="number"
-                    placeholder="Min"
-                    value={filters.minPopularity}
-                    onChange={(e) => handleFilterChange('minPopularity', e.target.value)}
-                    min="0"
-                    max="5"
-                    step="0.1"
-                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  />
-                  <span className="text-gray-500">-</span>
-                  <input
-                    type="number"
-                    placeholder="Max"
-                    value={filters.maxPopularity}
-                    onChange={(e) => handleFilterChange('maxPopularity', e.target.value)}
-                    min="0"
-                    max="5"
-                    step="0.1"
-                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  />
+                <label className="font-montserrat font-medium text-sm text-gray-900 mb-3 block">Popularity</label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                        <input
+                          type="text"
+                          placeholder="Min (0-5)"
+                          value={filters.minPopularity}
+                          onChange={(e) => handleFilterChange('minPopularity', e.target.value)}
+                          className="font-avenir text-sm border border-gray-300 rounded-lg px-4 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-gray-700 focus:border-transparent"
+                        />
+                  </div>
+                  <span className="text-gray-400 font-medium">—</span>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Max (0-5)"
+                      value={filters.maxPopularity}
+                      onChange={(e) => handleFilterChange('maxPopularity', e.target.value)}
+                      className="font-avenir text-sm border border-gray-300 rounded-lg px-4 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-gray-700 focus:border-transparent"
+                    />
+                  </div>
                 </div>
               </div>
 
+              {/* Divider */}
+              <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+
               {/* Weight Filters */}
               <div>
-                <label className="font-avenir text-xs text-gray-600 block mb-2">Weight (grams)</label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="number"
-                    placeholder="Min"
-                    value={filters.minWeight}
-                    onChange={(e) => handleFilterChange('minWeight', e.target.value)}
-                    min="0"
-                    step="0.1"
-                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  />
-                  <span className="text-gray-500">-</span>
-                  <input
-                    type="number"
-                    placeholder="Max"
-                    value={filters.maxWeight}
-                    onChange={(e) => handleFilterChange('maxWeight', e.target.value)}
-                    min="0"
-                    step="0.1"
-                    className="font-avenir text-sm border border-gray-300 rounded-md px-3 py-1 w-full focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  />
+                <label className="font-montserrat font-medium text-sm text-gray-900 mb-3 block">Weight</label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                        <input
+                          type="text"
+                          placeholder="Min (1.8g)"
+                          value={filters.minWeight}
+                          onChange={(e) => handleFilterChange('minWeight', e.target.value)}
+                          className="font-avenir text-sm border border-gray-300 rounded-lg px-4 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-gray-700 focus:border-transparent"
+                        />
+                  </div>
+                  <span className="text-gray-400 font-medium">—</span>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Max (5.2g)"
+                      value={filters.maxWeight}
+                      onChange={(e) => handleFilterChange('maxWeight', e.target.value)}
+                      className="font-avenir text-sm border border-gray-300 rounded-lg px-4 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-gray-700 focus:border-transparent"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Filter Action Buttons */}
-            <div className="mt-4 flex items-center space-x-3">
+            {/* Panel Footer - Action Buttons */}
+            <div className="border-t border-gray-200 p-6 bg-gray-50 space-y-3">
               <button
-                onClick={handleApplyFilters}
-                className="font-avenir text-sm bg-gray-700 text-white px-6 py-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                onClick={() => {
+                  handleApplyFilters();
+                  setShowFilters(false);
+                }}
+                className="w-full font-montserrat font-semibold text-base bg-gray-900 text-white px-6 py-3.5 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-700 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 Apply Filters
               </button>
@@ -312,15 +443,15 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
                       maxWeight: ''
                     });
                   }}
-                  className="font-avenir text-sm bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full font-avenir text-sm bg-white text-gray-700 px-6 py-2.5 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200"
                 >
                   Clear All Filters
                 </button>
               )}
             </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Search Results Info */}
       {searchResults && (
@@ -349,4 +480,4 @@ const ProductList: React.FC<ProductListProps> = ({ className = '' }) => {
   );
 };
 
-export default ProductList;
+export default memo(ProductList);
