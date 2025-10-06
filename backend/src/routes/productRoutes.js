@@ -119,7 +119,7 @@ const {
  *         schema:
  *           type: string
  *           enum: [price_high_to_low, price_low_to_high, most_popular, new]
- *         description: Kullanıcı dostu sıralama türü (new: tarihe göre sıralar, yeniden eskiye)
+ *         description: Kullanıcı dostu sıralama türü - new tarihe göre sıralar yeniden eskiye
  *         example: price_high_to_low
  *     responses:
  *       200:

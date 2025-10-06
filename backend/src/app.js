@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const swaggerUi = require('swagger-ui-express');
+const path = require('path');
 require('dotenv').config();
 
 const productRoutes = require('./routes/productRoutes');
@@ -34,6 +35,14 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
 
 // Routes
 app.use('/api', productRoutes);
+
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, '../../frontend/build')));
+
+// Catch all handler: send back React's index.html file for any non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/build', 'index.html'));
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
