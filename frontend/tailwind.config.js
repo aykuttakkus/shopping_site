@@ -14,6 +14,9 @@ module.exports = {
         'avenir': ['Avenir', 'sans-serif'],
         'montserrat': ['Montserrat', 'sans-serif'],
       },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+      },
     },
   },
   plugins: [],
